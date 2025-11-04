@@ -1,0 +1,435 @@
+{
+    "info": {
+        "name": "R2 Connector API",
+        "description": "Collection để test upload/download file với Cloudflare R2 và PostgreSQL Backup",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Health Check",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:3000/",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        ""
+                    ]
+                },
+                "description": "Kiểm tra API server đang chạy"
+            }
+        },
+        {
+            "name": "Upload File (Small)",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "file",
+                            "type": "file",
+                            "src": [],
+                            "description": "Chọn file cần upload (< 100MB)"
+                        },
+                        {
+                            "key": "key",
+                            "value": "uploads/myfile.txt",
+                            "type": "text",
+                            "description": "Tên file trên R2 (optional)"
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "http://localhost:3000/api/upload",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "upload"
+                    ]
+                },
+                "description": "Upload file nhỏ (< 100MB) lên R2"
+            }
+        },
+        {
+            "name": "Upload File Large (Multipart)",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "file",
+                            "type": "file",
+                            "src": [],
+                            "description": "Chọn file lớn cần upload (> 100MB)"
+                        },
+                        {
+                            "key": "key",
+                            "value": "uploads/largefile.zip",
+                            "type": "text",
+                            "description": "Tên file trên R2 (optional)"
+                        },
+                        {
+                            "key": "partSize",
+                            "value": "52428800",
+                            "type": "text",
+                            "description": "Part size (bytes) - optional, mặc định 100MB. Ví dụ: 52428800 = 50MB"
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "http://localhost:3000/api/upload/large",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "upload",
+                        "large"
+                    ]
+                },
+                "description": "Upload file lớn (> 100MB) sử dụng multipart upload"
+            }
+        },
+        {
+            "name": "Upload File Auto (Recommended)",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "file",
+                            "type": "file",
+                            "src": [],
+                            "description": "Chọn file cần upload (bất kỳ kích thước)"
+                        },
+                        {
+                            "key": "key",
+                            "value": "uploads/autofile.dat",
+                            "type": "text",
+                            "description": "Tên file trên R2 (optional)"
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "http://localhost:3000/api/upload/auto",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "upload",
+                        "auto"
+                    ]
+                },
+                "description": "Upload file tự động - API sẽ chọn method phù hợp dựa trên kích thước file"
+            }
+        },
+        {
+            "name": "Download File",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:3000/api/download/uploads/myfile.txt",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "download",
+                        "uploads",
+                        "myfile.txt"
+                    ]
+                },
+                "description": "Download file từ R2. Thay đổi đường dẫn file theo file thực tế của bạn."
+            }
+        },
+        {
+            "name": "List Files",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:3000/api/files?prefix=uploads/",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "files"
+                    ],
+                    "query": [
+                        {
+                            "key": "prefix",
+                            "value": "uploads/",
+                            "description": "Lọc file theo tiền tố (optional)"
+                        }
+                    ]
+                },
+                "description": "Liệt kê tất cả file trong bucket. Có thể lọc theo prefix."
+            }
+        },
+        {
+            "name": "List All Files",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:3000/api/files",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "files"
+                    ]
+                },
+                "description": "Liệt kê tất cả file trong bucket (không lọc)"
+            }
+        },
+        {
+            "name": "Delete File",
+            "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:3000/api/delete/uploads/myfile.txt",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "delete",
+                        "uploads",
+                        "myfile.txt"
+                    ]
+                },
+                "description": "Xóa file từ R2. Thay đổi đường dẫn file theo file cần xóa."
+            }
+        },
+        {
+            "name": "Backup PostgreSQL (pg_dump)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"connectionString\": \"postgresql://username:password@host:port/database\",\n    \"fileName\": \"my-backup.sql\"\n}"
+                },
+                "url": {
+                    "raw": "http://localhost:3000/api/backup/postgres",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "backup",
+                        "postgres"
+                    ]
+                },
+                "description": "Backup PostgreSQL database sử dụng pg_dump (yêu cầu pg_dump installed). File backup sẽ được upload lên R2."
+            }
+        },
+        {
+            "name": "Backup PostgreSQL Custom (No pg_dump)",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"connectionString\": \"postgresql://username:password@host:port/database\",\n    \"fileName\": \"custom-backup.sql\"\n}"
+                },
+                "url": {
+                    "raw": "http://localhost:3000/api/backup/postgres/custom",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "backup",
+                        "postgres",
+                        "custom"
+                    ]
+                },
+                "description": "Backup PostgreSQL custom (không cần pg_dump). Tự động export tất cả tables và data. File backup sẽ được upload lên R2."
+            }
+        },
+        {
+            "name": "Download Backup File (Local)",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:3000/api/backup/download/postgres-backup-2025-11-02T10-30-45.sql",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "backup",
+                        "download",
+                        "postgres-backup-2025-11-02T10-30-45.sql"
+                    ]
+                },
+                "description": "Download file backup từ local server (thư mục backups/). Thay đổi tên file theo file backup thực tế."
+            }
+        },
+        {
+            "name": "Cron Status",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:3000/api/cron/status",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "cron",
+                        "status"
+                    ]
+                },
+                "description": "Xem trạng thái cronjob backup tự động. Hiển thị schedule, timezone, last backup và backup history."
+            }
+        },
+        {
+            "name": "Cron Start",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:3000/api/cron/start",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "cron",
+                        "start"
+                    ]
+                },
+                "description": "Bật cronjob backup tự động."
+            }
+        },
+        {
+            "name": "Cron Stop",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:3000/api/cron/stop",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "cron",
+                        "stop"
+                    ]
+                },
+                "description": "Tắt cronjob backup tự động."
+            }
+        },
+        {
+            "name": "Cron Trigger Manual Backup",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                    "raw": "http://localhost:3000/api/cron/trigger",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "cron",
+                        "trigger"
+                    ]
+                },
+                "description": "Trigger backup thủ công ngay lập tức. Không cần đợi cronjob schedule."
+            }
+        },
+        {
+            "name": "Cron Update Schedule",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"schedule\": \"0 3 * * *\"\n}"
+                },
+                "url": {
+                    "raw": "http://localhost:3000/api/cron/schedule",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "cron",
+                        "schedule"
+                    ]
+                },
+                "description": "Cập nhật cron schedule. Format: minute hour day month weekday. Ví dụ: '0 3 * * *' = mỗi ngày lúc 3:00 AM"
+            }
+        }
+    ]
+}
