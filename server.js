@@ -1,7 +1,8 @@
 import express from 'express';
+import ejs from 'ejs';
 import multer from 'multer';
 import cors from 'cors';
-import { uploadFile, uploadLargeFile, uploadFileAuto } from './upload.js';
+import { uploadFile, uploadLargeFile, uploadFileAuto, uploadExeFileTad } from './upload.js';
 import { downloadFile, listFiles } from './download.js';
 import { backupPostgres, backupPostgresCustom } from './postgres-backup.js';
 import {
@@ -22,6 +23,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// View engine + static assets for Dashboard UI
+app.set('view engine', 'ejs');
+app.set('views', path.join(process.cwd(), 'views'));
+app.use(express.static(path.join(process.cwd(), 'public')));
+
 // Cấu hình multer để lưu file tạm
 const upload = multer({
     dest: 'temp_uploads/',
@@ -40,7 +46,16 @@ console.log('\n🔧 Khởi tạo Backup Cronjob...');
 initBackupCron();
 
 // ===== ROUTES =====
-
+// Dashboard UI
+app.get('/dashboard', async (req, res) => {
+    try {
+        // Render index.ejs into a string and inject into layout
+        const indexHtml = await ejs.renderFile(path.join(process.cwd(), 'views', 'index.ejs'));
+        res.render('layout', { body: indexHtml });
+    } catch (err) {
+        res.status(500).send('Error rendering dashboard: ' + err.message);
+    }
+});
 // Health check
 app.get('/', (req, res) => {
     res.json({
@@ -49,6 +64,8 @@ app.get('/', (req, res) => {
         endpoints: {
             upload: 'POST /api/upload',
             uploadLarge: 'POST /api/upload/large',
+            uploadAuto: 'POST /api/upload/auto',
+            uploadExe: 'POST /api/upload/exe',
             download: 'GET /api/download/:key',
             list: 'GET /api/files',
             delete: 'DELETE /api/delete/:key',
@@ -185,6 +202,59 @@ app.post('/api/upload/auto', upload.single('file'), async (req, res) => {
     }
 });
 
+// Upload exe file với auto-cleanup và Strapi update
+app.post('/api/upload/exe', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Không có file được upload' });
+        }
+
+        const customKey = req.body.key || `exe/${req.file.originalname}`;
+        const filePath = req.file.path;
+
+        console.log(`📤 Uploading exe file: ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(2)} MB)`);
+
+        // Upload exe file với auto cleanup và Strapi update
+        const result = await uploadExeFileTad(filePath, customKey);
+
+        // Xóa file tạm
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: 'Upload exe thành công, đã xóa version cũ và cập nhật Strapi',
+                data: {
+                    key: result.key,
+                    etag: result.etag,
+                    size: result.size,
+                    sizeMB: result.sizeMB,
+                    originalName: req.file.originalname,
+                    strapiUpdated: result.strapiUpdated,
+                    oldFilesDeleted: result.oldFilesDeleted
+                }
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: result.error
+            });
+        }
+
+    } catch (error) {
+        // Xóa file tạm nếu có lỗi
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Download file
 app.get('/api/download/:key(*)', async (req, res) => {
     try {
@@ -265,10 +335,19 @@ app.delete('/api/delete/:key(*)', async (req, res) => {
 // Backup PostgreSQL database (sử dụng pg_dump)
 app.post('/api/backup/postgres', async (req, res) => {
     try {
-        const { connectionString, fileName } = req.body;
+        let { connectionString, fileName } = req.body;
 
+        // Nếu không có connectionString, lấy từ env
         if (!connectionString) {
             connectionString = process.env.DATABASE_URL;
+        }
+
+        // Kiểm tra có DATABASE_URL không
+        if (!connectionString) {
+            return res.status(400).json({
+                success: false,
+                error: 'Thiếu DATABASE_URL. Vui lòng cấu hình DATABASE_URL trong .env hoặc gửi connectionString trong request body.'
+            });
         }
 
         console.log(`💾 Bắt đầu backup PostgreSQL...`);
@@ -296,11 +375,18 @@ app.post('/api/backup/postgres', async (req, res) => {
 // Backup PostgreSQL database (custom - không cần pg_dump)
 app.post('/api/backup/postgres/custom', async (req, res) => {
     try {
-        const { connectionString, fileName } = req.body;
+        let { connectionString, fileName } = req.body;
 
+        // Nếu không có connectionString, lấy từ env
+        if (!connectionString) {
+            connectionString = process.env.DATABASE_URL;
+        }
+
+        // Kiểm tra có DATABASE_URL không
         if (!connectionString) {
             return res.status(400).json({
-                error: 'Thiếu connectionString. Format: postgresql://user:password@host:port/database'
+                success: false,
+                error: 'Thiếu DATABASE_URL. Vui lòng cấu hình DATABASE_URL trong .env hoặc gửi connectionString trong request body.'
             });
         }
 

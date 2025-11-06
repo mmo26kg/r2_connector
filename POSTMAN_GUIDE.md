@@ -62,7 +62,42 @@ Server sẽ chạy tại: `http://localhost:3000`
 
 **Lợi ích**: API tự động chọn method upload phù hợp
 
-### 5. Download File
+### 5. Upload EXE File (with Auto Cleanup & Strapi Update)
+- **Method**: `POST`
+- **URL**: `http://localhost:3000/api/upload/exe`
+- **Body**: form-data
+  - `file`: Chọn file exe cần upload
+  - `key`: Tên file trên R2 (phải bắt đầu bằng `exe/`)
+
+**Tính năng đặc biệt:**
+- ✅ Auto upload (multipart cho file lớn)
+- ✅ Tự động xóa các exe file cũ trong folder `exe/`
+- ✅ Cập nhật download link lên Strapi CMS (nếu có cấu hình)
+
+**Yêu cầu env (optional cho Strapi):**
+```env
+STRAPI_URL=https://your-strapi.com
+STRAPI_API_TOKEN=your_token
+```
+
+**Response example:**
+```json
+{
+  "success": true,
+  "message": "Upload exe thành công, đã xóa version cũ và cập nhật Strapi",
+  "data": {
+    "key": "exe/myapp.exe",
+    "etag": "\"abc123...\"",
+    "size": 52428800,
+    "sizeMB": "50.00",
+    "originalName": "myapp.exe",
+    "strapiUpdated": true,
+    "oldFilesDeleted": 3
+  }
+}
+```
+
+### 6. Download File
 - **Method**: `GET`
 - **URL**: `http://localhost:3000/api/download/{key}`
 - **Example**: `http://localhost:3000/api/download/uploads/test.txt`
@@ -72,7 +107,7 @@ Server sẽ chạy tại: `http://localhost:3000`
 2. Click **Send**
 3. File sẽ được download về máy
 
-### 6. List Files
+### 7. List Files
 - **Method**: `GET`
 - **URL**: `http://localhost:3000/api/files`
 - **Query params**: 
@@ -82,7 +117,7 @@ Server sẽ chạy tại: `http://localhost:3000`
 - List tất cả: `http://localhost:3000/api/files`
 - List theo prefix: `http://localhost:3000/api/files?prefix=uploads/`
 
-### 7. Delete File
+### 8. Delete File
 - **Method**: `DELETE`
 - **URL**: `http://localhost:3000/api/delete/{key}`
 - **Example**: `http://localhost:3000/api/delete/uploads/test.txt`
@@ -105,12 +140,18 @@ Server sẽ chạy tại: `http://localhost:3000`
 2. API tự động chọn method phù hợp
 3. **Download**: GET `/api/download/{key}` để kiểm tra
 
-### Test 4: Backup PostgreSQL
+### Test 4: Upload EXE với Auto Cleanup
+1. **Upload EXE**: POST `/api/upload/exe` với file exe
+2. Kiểm tra response: `strapiUpdated` và `oldFilesDeleted`
+3. **List exe folder**: GET `/api/files?prefix=exe/`
+4. Xác nhận chỉ còn 1 file exe mới nhất
+
+### Test 5: Backup PostgreSQL
 1. **Backup**: POST `/api/backup/postgres` với connectionString
 2. **Check Status**: GET `/api/cron/status` để xem backup history
 3. **Download từ R2**: GET `/api/download/backups/postgres/{filename}`
 
-### Test 5: Cronjob Tự động Backup
+### Test 6: Cronjob Tự động Backup
 1. **Xem status**: GET `/api/cron/status`
 2. **Trigger manual**: POST `/api/cron/trigger`
 3. **Stop cron**: POST `/api/cron/stop`

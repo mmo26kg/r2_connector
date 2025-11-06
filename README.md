@@ -126,9 +126,33 @@ API sẽ chạy tại `http://localhost:3000`
 
 ---
 
-## 📖 Sử dụng
+## 🎯 Sử dụng
 
-### Chạy API Server
+### 🖥️ Giao diện Web Dashboard (Recommended)
+
+Truy cập giao diện web để quản lý upload, download, backup và cronjob:
+
+```bash
+# Chạy server
+npm run dev
+
+# Mở trình duyệt
+open http://localhost:3000/dashboard
+```
+
+**Dashboard có các tab:**
+- **Upload**: Upload file lên R2 (tự động chọn exe/TadSetup.exe)
+- **Download**: Download file từ R2
+- **Backup**: Backup PostgreSQL database (tự động dùng DATABASE_URL từ env)
+- **Cron**: Quản lý cronjob backup tự động
+- **Files**: Liệt kê và xóa file
+- **Logs**: Xem log các thao tác
+
+---
+
+### 📡 API Endpoints (cho Postman hoặc cURL)
+
+Nếu muốn dùng API trực tiếp:
 
 ```bash
 # Cài đặt dependencies trước

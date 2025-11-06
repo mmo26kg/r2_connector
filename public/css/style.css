@@ -1,0 +1,382 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #1a202c;
+    min-height: 100vh;
+}
+
+header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px 30px;
+    border-bottom: 3px solid #667eea;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: #667eea;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+header nav {
+    margin-top: 8px;
+}
+
+header nav a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+header nav a:hover {
+    background: #667eea;
+    color: white;
+}
+
+main {
+    padding: 30px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+footer {
+    padding: 16px 30px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #718096;
+    text-align: center;
+    margin-top: 40px;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* Tabs Section */
+section.tabs {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.tab-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+
+.tab-buttons button {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    color: #4a5568;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.tab-buttons button:hover {
+    background: #f7fafc;
+    color: #667eea;
+}
+
+.tab-buttons button.active {
+    background: #667eea;
+    color: white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tab-content h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #2d3748;
+    font-size: 22px;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 8px;
+}
+
+/* Forms */
+form {
+    background: #f7fafc;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+form label {
+    display: block;
+    margin: 12px 0;
+    font-weight: 500;
+    color: #2d3748;
+    font-size: 14px;
+}
+
+input[type='text'],
+input[type='file'],
+select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s;
+    margin-top: 4px;
+}
+
+input[type='text']:focus,
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+input[type='checkbox'] {
+    width: auto;
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+/* Buttons */
+button {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+button[type="submit"] {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    margin-top: 12px;
+}
+
+button[type="submit"]:hover {
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+}
+
+/* Cron buttons */
+#cron button {
+    margin: 4px;
+    font-size: 13px;
+    padding: 8px 16px;
+}
+
+#cronStartBtn {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+}
+
+#cronStopBtn {
+    background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
+}
+
+#cronTriggerBtn {
+    background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+}
+
+#cronStatusBtn {
+    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+}
+
+/* Pre / Code */
+pre {
+    background: #1a202c;
+    color: #e2e8f0;
+    padding: 16px;
+    border-radius: 8px;
+    overflow: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+#backupResult {
+    background: #f7fafc;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    margin-top: 12px;
+    font-family: monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+}
+
+/* Logs */
+#actionLogs {
+    max-height: 400px;
+    overflow: auto;
+    border: 2px solid #e2e8f0;
+    padding: 12px;
+    background: #f7fafc;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.log-line {
+    font-size: 13px;
+    padding: 6px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    line-height: 1.4;
+    color: #2d3748;
+    background: white;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    border-left: 3px solid #667eea;
+}
+
+.log-line:hover {
+    background: #edf2f7;
+}
+
+#clearLogs {
+    background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
+}
+
+/* File List */
+#fileList {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+}
+
+#fileList li {
+    padding: 12px;
+    background: #f7fafc;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+#fileList li button {
+    padding: 6px 12px;
+    font-size: 12px;
+    margin: 0 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    main {
+        padding: 20px 12px;
+    }
+
+    section.tabs {
+        padding: 16px;
+    }
+
+    .tab-buttons {
+        gap: 4px;
+    }
+
+    .tab-buttons button {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    header {
+        padding: 16px 20px;
+    }
+
+    header h1 {
+        font-size: 20px;
+    }
+}
+
+/* Progress Bar */
+.progress-container {
+    width: 100%;
+    height: 30px;
+    background: #e2e8f0;
+    border-radius: 15px;
+    overflow: hidden;
+    margin: 16px 0;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    width: 0%;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 13px;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.5);
+}
+
+.status-text {
+    font-size: 14px;
+    color: #4a5568;
+    margin: 8px 0;
+    padding: 8px 12px;
+    background: #f7fafc;
+    border-radius: 6px;
+    border-left: 4px solid #667eea;
+    font-weight: 500;
+}
+
+#uploadProgress,
+#downloadProgress {
+    margin-top: 16px;
+    padding: 12px;
+    background: white;
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
+}

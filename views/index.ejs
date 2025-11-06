@@ -1,0 +1,92 @@
+<section class="tabs">
+    <div class="tab-buttons">
+        <button data-tab="upload" class="active">Upload</button>
+        <button data-tab="download">Download</button>
+        <button data-tab="backup">Backup</button>
+        <button data-tab="cron">Cron</button>
+        <button data-tab="files">Files</button>
+        <button data-tab="logs">Logs</button>
+    </div>
+
+    <div class="tab-contents">
+        <div id="upload" class="tab-content active">
+            <h2>Upload</h2>
+            <form id="uploadForm">
+                <label>File: <input type="file" name="file" required /></label>
+                <label>Key: <input type="text" name="key" value="exe/TadSetup.exe" placeholder="optional key" /></label>
+                <select name="method" id="uploadMethod">
+                    <option value="exe" selected>Upload exe (auto-clean)</option>
+                    <option value="auto">Auto</option>
+                    <option value="single">Single</option>
+                    <option value="large">Multipart</option>
+                </select>
+                <button type="submit">Upload</button>
+            </form>
+            <div id="uploadProgress" style="display:none">
+                <div class="progress-container">
+                    <div class="progress-bar" id="uploadProgressBar"></div>
+                </div>
+                <div id="uploadStatus" class="status-text"></div>
+            </div>
+        </div>
+
+        <div id="download" class="tab-content">
+            <h2>Download</h2>
+            <form id="downloadForm">
+                <label>Key: <input type="text" name="key" required /></label>
+                <button type="submit">Download</button>
+            </form>
+            <div id="downloadProgress" style="display:none">
+                <div class="progress-container">
+                    <div class="progress-bar" id="downloadProgressBar"></div>
+                </div>
+                <div id="downloadStatus" class="status-text"></div>
+            </div>
+        </div>
+
+        <div id="backup" class="tab-content">
+            <h2>Backup</h2>
+            <form id="backupForm">
+                <label>Use custom backup (no pg_dump): <input type="checkbox" name="useCustom" /></label>
+                <label>Connection string (optional): <input type="text" name="connectionString"
+                        placeholder="Leave blank to use DATABASE_URL from server" /></label>
+                <button type="button" id="backupBtn">Start Backup</button>
+            </form>
+            <div id="backupResult"></div>
+        </div>
+
+        <div id="cron" class="tab-content">
+            <h2>Cron</h2>
+            <div>
+                <button id="cronStatusBtn">Get Status</button>
+                <button id="cronStartBtn">Start</button>
+                <button id="cronStopBtn">Stop</button>
+                <button id="cronTriggerBtn">Trigger Now</button>
+            </div>
+            <form id="cronScheduleForm">
+                <label>New schedule: <input type="text" name="schedule" placeholder="e.g. 0 2 * * *" required /></label>
+                <button type="submit">Update schedule</button>
+            </form>
+            <pre id="cronStatus"></pre>
+        </div>
+
+        <div id="files" class="tab-content">
+            <h2>Files</h2>
+            <form id="listForm">
+                <label>Prefix: <input type="text" name="prefix" placeholder="optional" /></label>
+                <button type="submit">List Files</button>
+            </form>
+            <ul id="fileList"></ul>
+        </div>
+
+        <div id="logs" class="tab-content">
+            <h2>Logs</h2>
+            <div id="actionLogs"></div>
+            <button id="clearLogs">Clear Logs</button>
+        </div>
+    </div>
+</section>
+
+<script>
+    // EJS layout will inject
+</script>

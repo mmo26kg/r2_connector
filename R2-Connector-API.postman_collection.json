@@ -144,6 +144,44 @@
             }
         },
         {
+            "name": "Upload EXE File (with Auto Cleanup)",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                    "mode": "formdata",
+                    "formdata": [
+                        {
+                            "key": "file",
+                            "type": "file",
+                            "src": [],
+                            "description": "Chọn file exe cần upload"
+                        },
+                        {
+                            "key": "key",
+                            "value": "exe/myapp.exe",
+                            "type": "text",
+                            "description": "Tên file trên R2 (phải bắt đầu bằng 'exe/')"
+                        }
+                    ]
+                },
+                "url": {
+                    "raw": "http://localhost:3000/api/upload/exe",
+                    "protocol": "http",
+                    "host": [
+                        "localhost"
+                    ],
+                    "port": "3000",
+                    "path": [
+                        "api",
+                        "upload",
+                        "exe"
+                    ]
+                },
+                "description": "Upload exe file với các tính năng:\n- Auto upload (chọn multipart cho file lớn)\n- Tự động xóa các exe file cũ trong folder exe/\n- Cập nhật download link trên Strapi (nếu có cấu hình STRAPI_URL và STRAPI_API_TOKEN)"
+            }
+        },
+        {
             "name": "Download File",
             "request": {
                 "method": "GET",
