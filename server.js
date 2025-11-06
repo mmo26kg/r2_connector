@@ -254,6 +254,7 @@ app.post('/api/upload/exe', upload.single('file'), async (req, res) => {
         const filePath = req.file.path;
 
         console.log(`📤 Uploading exe file: ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(2)} MB)`);
+        console.log(`🔍 Origin: ${req.headers.origin || 'same-origin'}`);
 
         // Upload exe file với auto cleanup và Strapi update
         const result = await uploadExeFileTad(filePath, customKey);
@@ -264,6 +265,8 @@ app.post('/api/upload/exe', upload.single('file'), async (req, res) => {
         }
 
         if (result.success) {
+            console.log(`✅ Upload exe thành công: ${customKey}`);
+            
             res.json({
                 success: true,
                 message: 'Upload exe thành công, đã xóa version cũ và cập nhật Strapi',
@@ -278,6 +281,7 @@ app.post('/api/upload/exe', upload.single('file'), async (req, res) => {
                 }
             });
         } else {
+            console.error(`❌ Upload exe failed: ${result.error}`);
             res.status(500).json({
                 success: false,
                 error: result.error
@@ -285,6 +289,7 @@ app.post('/api/upload/exe', upload.single('file'), async (req, res) => {
         }
 
     } catch (error) {
+        console.error(`❌ Upload exe exception: ${error.message}`);
         // Xóa file tạm nếu có lỗi
         if (req.file && fs.existsSync(req.file.path)) {
             fs.unlinkSync(req.file.path);
@@ -302,27 +307,39 @@ app.get('/api/download/:key(*)', async (req, res) => {
         const key = req.params.key;
 
         console.log(`📥 Downloading: ${key}`);
+        console.log(`🔍 Origin: ${req.headers.origin || 'same-origin'}`);
+        console.log(`🔍 Referer: ${req.headers.referer}`);
 
         const result = await downloadFile(key);
 
         if (result.success) {
-            // Set CORS headers explicitly cho download
-            res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
-            res.setHeader('Access-Control-Allow-Credentials', 'true');
+            // Chỉ set CORS headers nếu có origin (cross-origin request)
+            const origin = req.headers.origin;
+            if (origin) {
+                res.setHeader('Access-Control-Allow-Origin', origin);
+                res.setHeader('Access-Control-Allow-Credentials', 'true');
+            }
+            
+            // Expose headers để browser đọc được
             res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Type');
             
             // Set headers để download
             res.setHeader('Content-Type', 'application/octet-stream');
             res.setHeader('Content-Disposition', `attachment; filename="${path.basename(key)}"`);
             res.setHeader('Content-Length', result.buffer.length);
-            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
             
+            console.log(`✅ Sending file: ${result.buffer.length} bytes`);
             res.send(result.buffer);
         } else {
+            console.error(`❌ Download failed: ${result.error}`);
             res.status(404).json({ error: result.error });
         }
 
     } catch (error) {
+        console.error(`❌ Exception: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
