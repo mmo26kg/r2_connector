@@ -1,0 +1,648 @@
+import express from 'express';
+import ejs from 'ejs';
+import multer from 'multer';
+import cors from 'cors';
+import { uploadFile, uploadLargeFile, uploadFileAuto, uploadExeFileTad } from './upload.js';
+import { downloadFile, listFiles } from './download.js';
+import { backupPostgres, backupPostgresCustom } from './postgres-backup.js';
+import {
+    initBackupCron,
+    stopBackupCron,
+    startBackupCron,
+    getCronStatus,
+    triggerManualBackup,
+    updateCronSchedule
+} from './cron-backup.js';
+import fs from 'fs';
+import path from 'path';
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware - CORS configuration
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Cho phép requests không có origin (như Postman, curl)
+        if (!origin) return callback(null, true);
+
+        // Danh sách domains được phép
+        const allowedOrigins = [
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'https://file.taddesign.net',
+            'https://admin.taddesign.net',
+            'https://taddesign.net',
+            'https://www.taddesign.net',
+            process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null,
+            process.env.CUSTOM_DOMAIN ? `https://${process.env.CUSTOM_DOMAIN}` : null,
+        ].filter(Boolean); // Loại bỏ null/undefined
+
+        // Cho phép tất cả subdomain của taddesign.net
+        if (origin && origin.match(/https?:\/\/(.*\.)?taddesign\.net$/)) {
+            return callback(null, true);
+        }
+
+        // Kiểm tra origin có trong whitelist không
+        if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+            callback(null, true);
+        } else {
+            console.warn(`⚠️  CORS blocked origin: ${origin}`);
+            callback(null, true); // Tạm thời cho phép tất cả - có thể strict hơn
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Content-Disposition', 'Content-Length', 'Content-Type'],
+    maxAge: 86400, // 24 hours
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
+app.use(express.json());
+
+// View engine + static assets for Dashboard UI
+app.set('view engine', 'ejs');
+app.set('views', path.join(process.cwd(), 'views'));
+app.use(express.static(path.join(process.cwd(), 'public')));
+
+// Cấu hình multer để lưu file tạm
+const upload = multer({
+    dest: 'temp_uploads/',
+    limits: {
+        fileSize: 5 * 1024 * 1024 * 1024 // 5GB max
+    }
+});
+
+// Tạo thư mục temp nếu chưa có
+if (!fs.existsSync('temp_uploads')) {
+    fs.mkdirSync('temp_uploads', { recursive: true });
+}
+
+// Khởi tạo cronjob backup tự động
+console.log('\n🔧 Khởi tạo Backup Cronjob...');
+initBackupCron();
+
+// ===== ROUTES =====
+// Dashboard UI
+app.get('/dashboard', async (req, res) => {
+    try {
+        // Render index.ejs into a string and inject into layout
+        const indexHtml = await ejs.renderFile(path.join(process.cwd(), 'views', 'index.ejs'));
+        res.render('layout', { body: indexHtml });
+    } catch (err) {
+        res.status(500).send('Error rendering dashboard: ' + err.message);
+    }
+});
+// Health check
+app.get('/', (req, res) => {
+    res.json({
+        message: 'R2 Connector API',
+        version: '1.0.0',
+        endpoints: {
+            upload: 'POST /api/upload',
+            uploadLarge: 'POST /api/upload/large',
+            uploadAuto: 'POST /api/upload/auto',
+            uploadExe: 'POST /api/upload/exe',
+            download: 'GET /api/download/:key',
+            list: 'GET /api/files',
+            delete: 'DELETE /api/delete/:key',
+            backupPostgres: 'POST /api/backup/postgres',
+            backupPostgresCustom: 'POST /api/backup/postgres/custom',
+            cronStatus: 'GET /api/cron/status',
+            cronStart: 'POST /api/cron/start',
+            cronStop: 'POST /api/cron/stop',
+            cronTrigger: 'POST /api/cron/trigger'
+        }
+    });
+});
+
+// Upload file (single upload - cho file < 100MB)
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Không có file được upload' });
+        }
+
+        const customKey = req.body.key || req.file.originalname;
+        const filePath = req.file.path;
+
+        console.log(`📤 Uploading: ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(2)} MB)`);
+
+        // Upload lên R2
+        const result = await uploadFile(filePath, customKey);
+
+        // Xóa file tạm
+        fs.unlinkSync(filePath);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: 'Upload thành công',
+                data: {
+                    key: result.key,
+                    etag: result.etag,
+                    originalName: req.file.originalname,
+                    size: req.file.size
+                }
+            });
+        } else {
+            res.status(500).json({ error: result.error });
+        }
+
+    } catch (error) {
+        // Xóa file tạm nếu có lỗi
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Upload file lớn (multipart upload - cho file > 100MB)
+app.post('/api/upload/large', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Không có file được upload' });
+        }
+
+        const customKey = req.body.key || req.file.originalname;
+        const filePath = req.file.path;
+        const partSize = parseInt(req.body.partSize) || 100 * 1024 * 1024; // Default 100MB
+
+        console.log(`📤 Uploading large file: ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(2)} MB)`);
+
+        // Upload lên R2 bằng multipart
+        const result = await uploadLargeFile(filePath, customKey, partSize);
+
+        // Xóa file tạm
+        fs.unlinkSync(filePath);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: 'Upload file lớn thành công',
+                data: {
+                    key: result.key,
+                    etag: result.etag,
+                    parts: result.parts,
+                    originalName: req.file.originalname,
+                    size: result.size
+                }
+            });
+        } else {
+            res.status(500).json({ error: result.error });
+        }
+
+    } catch (error) {
+        // Xóa file tạm nếu có lỗi
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Upload tự động (auto-detect method)
+app.post('/api/upload/auto', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Không có file được upload' });
+        }
+
+        const customKey = req.body.key || req.file.originalname;
+        const filePath = req.file.path;
+
+        console.log(`📤 Auto uploading: ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(2)} MB)`);
+
+        // Upload tự động
+        const result = await uploadFileAuto(filePath, customKey);
+
+        // Xóa file tạm
+        fs.unlinkSync(filePath);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: 'Upload thành công',
+                data: result
+            });
+        } else {
+            res.status(500).json({ error: result.error });
+        }
+
+    } catch (error) {
+        // Xóa file tạm nếu có lỗi
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Upload exe file với auto-cleanup và Strapi update
+app.post('/api/upload/exe', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Không có file được upload' });
+        }
+
+        const customKey = req.body.key || `exe/${req.file.originalname}`;
+        const filePath = req.file.path;
+
+        console.log(`📤 Uploading exe file: ${req.file.originalname} (${(req.file.size / 1024 / 1024).toFixed(2)} MB)`);
+        console.log(`🔍 Origin: ${req.headers.origin || 'same-origin'}`);
+
+        // Upload exe file với auto cleanup và Strapi update
+        const result = await uploadExeFileTad(filePath, customKey);
+
+        // Xóa file tạm
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        if (result.success) {
+            console.log(`✅ Upload exe thành công: ${customKey}`);
+
+            res.json({
+                success: true,
+                message: 'Upload exe thành công, đã xóa version cũ và cập nhật Strapi',
+                data: {
+                    key: result.key,
+                    etag: result.etag,
+                    size: result.size,
+                    sizeMB: result.sizeMB,
+                    originalName: req.file.originalname,
+                    strapiUpdated: result.strapiUpdated,
+                    oldFilesDeleted: result.oldFilesDeleted
+                }
+            });
+        } else {
+            console.error(`❌ Upload exe failed: ${result.error}`);
+            res.status(500).json({
+                success: false,
+                error: result.error
+            });
+        }
+
+    } catch (error) {
+        console.error(`❌ Upload exe exception: ${error.message}`);
+        // Xóa file tạm nếu có lỗi
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Download file
+app.get('/api/download/:key(*)', async (req, res) => {
+    try {
+        const key = req.params.key;
+
+        console.log(`📥 Downloading: ${key}`);
+        console.log(`🔍 Origin: ${req.headers.origin || 'same-origin'}`);
+        console.log(`🔍 Referer: ${req.headers.referer}`);
+
+        const result = await downloadFile(key);
+
+        if (result.success) {
+            // Chỉ set CORS headers nếu có origin (cross-origin request)
+            const origin = req.headers.origin;
+            if (origin) {
+                res.setHeader('Access-Control-Allow-Origin', origin);
+                res.setHeader('Access-Control-Allow-Credentials', 'true');
+            }
+
+            // Expose headers để browser đọc được
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Type');
+
+            // Set headers để download
+            res.setHeader('Content-Type', 'application/octet-stream');
+            res.setHeader('Content-Disposition', `attachment; filename="${path.basename(key)}"`);
+            res.setHeader('Content-Length', result.buffer.length);
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+
+            console.log(`✅ Sending file: ${result.buffer.length} bytes`);
+            res.send(result.buffer);
+        } else {
+            console.error(`❌ Download failed: ${result.error}`);
+            res.status(404).json({ error: result.error });
+        }
+
+    } catch (error) {
+        console.error(`❌ Exception: ${error.message}`);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get pre-signed download URL (alternative download method)
+app.get('/api/download-url/:key(*)', async (req, res) => {
+    try {
+        const key = req.params.key;
+        const expiresIn = parseInt(req.query.expires) || 3600; // Default 1 hour
+
+        console.log(`🔗 Generating download URL for: ${key}`);
+
+        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+        const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+        const { createR2Client, bucketName } = await import('./r2-client.js');
+
+        const r2Client = createR2Client();
+        const command = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: key,
+        });
+
+        const signedUrl = await getSignedUrl(r2Client, command, { expiresIn });
+
+        res.json({
+            success: true,
+            url: signedUrl,
+            key: key,
+            expiresIn: expiresIn,
+            message: 'Pre-signed URL generated successfully'
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// List files
+app.get('/api/files', async (req, res) => {
+    try {
+        const prefix = req.query.prefix || '';
+
+        console.log(`📁 Listing files with prefix: "${prefix}"`);
+
+        const result = await listFiles(prefix);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                count: result.count,
+                files: result.files
+            });
+        } else {
+            res.status(500).json({ error: result.error });
+        }
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete file
+app.delete('/api/delete/:key(*)', async (req, res) => {
+    try {
+        const key = req.params.key;
+
+        console.log(`🗑️  Deleting: ${key}`);
+
+        const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+        const { createR2Client, bucketName } = await import('./r2-client.js');
+
+        const r2Client = createR2Client();
+        const command = new DeleteObjectCommand({
+            Bucket: bucketName,
+            Key: key,
+        });
+
+        await r2Client.send(command);
+
+        res.json({
+            success: true,
+            message: `Đã xóa file: ${key}`
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ===== POSTGRES BACKUP ROUTES =====
+
+// Backup PostgreSQL database (sử dụng pg_dump)
+app.post('/api/backup/postgres', async (req, res) => {
+    try {
+        let { connectionString, fileName } = req.body;
+
+        // Nếu không có connectionString, lấy từ env
+        if (!connectionString) {
+            connectionString = process.env.DATABASE_URL;
+        }
+
+        // Kiểm tra có DATABASE_URL không
+        if (!connectionString) {
+            return res.status(400).json({
+                success: false,
+                error: 'Thiếu DATABASE_URL. Vui lòng cấu hình DATABASE_URL trong .env hoặc gửi connectionString trong request body.'
+            });
+        }
+
+        console.log(`💾 Bắt đầu backup PostgreSQL...`);
+
+        const result = await backupPostgres(connectionString, fileName);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: 'Backup PostgreSQL thành công',
+                data: result.data
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: result.error
+            });
+        }
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Backup PostgreSQL database (custom - không cần pg_dump)
+app.post('/api/backup/postgres/custom', async (req, res) => {
+    try {
+        let { connectionString, fileName } = req.body;
+
+        // Nếu không có connectionString, lấy từ env
+        if (!connectionString) {
+            connectionString = process.env.DATABASE_URL;
+        }
+
+        // Kiểm tra có DATABASE_URL không
+        if (!connectionString) {
+            return res.status(400).json({
+                success: false,
+                error: 'Thiếu DATABASE_URL. Vui lòng cấu hình DATABASE_URL trong .env hoặc gửi connectionString trong request body.'
+            });
+        }
+
+        console.log(`💾 Bắt đầu custom backup PostgreSQL...`);
+
+        const result = await backupPostgresCustom(connectionString, fileName);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: 'Custom backup PostgreSQL thành công',
+                data: result.data
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: result.error
+            });
+        }
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Download backup file từ local
+app.get('/api/backup/download/:fileName', async (req, res) => {
+    try {
+        const fileName = req.params.fileName;
+        const backupPath = path.join('backups', fileName);
+
+        if (!fs.existsSync(backupPath)) {
+            return res.status(404).json({ error: 'File backup không tồn tại' });
+        }
+
+        res.download(backupPath, fileName);
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ===== CRON JOB MANAGEMENT ROUTES =====
+
+// Lấy trạng thái cronjob
+app.get('/api/cron/status', (req, res) => {
+    try {
+        const status = getCronStatus();
+        res.json({
+            success: true,
+            data: status
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Bật cronjob
+app.post('/api/cron/start', (req, res) => {
+    try {
+        const result = startBackupCron();
+        if (result) {
+            res.json({
+                success: true,
+                message: 'Cronjob đã được khởi động'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: 'Cronjob chưa được khởi tạo'
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Tắt cronjob
+app.post('/api/cron/stop', (req, res) => {
+    try {
+        const result = stopBackupCron();
+        if (result) {
+            res.json({
+                success: true,
+                message: 'Cronjob đã được dừng'
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: 'Cronjob chưa được khởi tạo'
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Trigger backup thủ công ngay lập tức
+app.post('/api/cron/trigger', async (req, res) => {
+    try {
+        console.log('🔧 API trigger manual backup...');
+        const result = await triggerManualBackup();
+
+        if (result && result.status === 'success') {
+            res.json({
+                success: true,
+                message: 'Backup thủ công thành công',
+                data: result
+            });
+        } else {
+            res.status(500).json({
+                success: false,
+                error: result?.error || 'Backup thất bại'
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Cập nhật cron schedule
+app.post('/api/cron/schedule', (req, res) => {
+    try {
+        const { schedule, connectionString } = req.body;
+
+        if (!schedule) {
+            return res.status(400).json({
+                error: 'Thiếu schedule. Ví dụ: "0 2 * * *" (mỗi ngày lúc 2:00 AM)'
+            });
+        }
+
+        const result = updateCronSchedule(schedule, connectionString);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: 'Đã cập nhật schedule',
+                data: result
+            });
+        } else {
+            res.status(400).json(result);
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Error handler
+app.use((error, req, res, next) => {
+    console.error('Error:', error);
+    res.status(500).json({
+        error: error.message || 'Internal server error'
+    });
+});
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`🚀 R2 Connector API đang chạy tại http://localhost:${PORT}`);
+    console.log(`📖 Xem API docs tại http://localhost:${PORT}`);
+});

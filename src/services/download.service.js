@@ -1,5 +1,5 @@
 import { GetObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { createR2Client, bucketName } from './r2-client.js';
+import { createR2Client, bucketName } from '../config/r2-client.js';
 import fs from 'fs';
 import path from 'path';
 

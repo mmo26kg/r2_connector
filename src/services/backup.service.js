@@ -2,7 +2,7 @@ import { Client } from 'pg';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { uploadFile } from './upload.js';
+import { uploadFile } from './upload.service.js';
 
 /**
  * Backup PostgreSQL database và upload lên R2

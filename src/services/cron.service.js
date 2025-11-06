@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import dotenv from 'dotenv';
-import { backupPostgres, backupPostgresCustom } from './postgres-backup.js';
+import { backupPostgres, backupPostgresCustom } from './backup.service.js';
 
 dotenv.config();
 

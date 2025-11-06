@@ -6,8 +6,8 @@ import {
     AbortMultipartUploadCommand,
     DeleteObjectCommand
 } from '@aws-sdk/client-s3';
-import { createR2Client, bucketName } from './r2-client.js';
-import { listFiles } from './download.js';
+import { createR2Client, bucketName } from '../config/r2-client.js';
+import { listFiles } from './download.service.js';
 import fs from 'fs';
 import path from 'path';
 
