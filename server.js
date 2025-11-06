@@ -268,9 +268,7 @@ app.post('/api/backup/postgres', async (req, res) => {
         const { connectionString, fileName } = req.body;
 
         if (!connectionString) {
-            return res.status(400).json({
-                error: 'Thiếu connectionString. Format: postgresql://user:password@host:port/database'
-            });
+            connectionString = process.env.DATABASE_URL;
         }
 
         console.log(`💾 Bắt đầu backup PostgreSQL...`);

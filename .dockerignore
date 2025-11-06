@@ -1,0 +1,36 @@
+# Ignore node_modules trong Docker image
+node_modules
+npm-debug.log
+
+# Ignore local env files
+.env
+
+# Ignore git
+.git
+.gitignore
+
+# Ignore temporary files
+temp_uploads/*
+!temp_uploads/.gitkeep
+
+# Ignore backups
+backups/*
+!backups/.gitkeep
+
+# Ignore downloads
+downloads/*
+!downloads/.gitkeep
+
+# Ignore logs
+*.log
+
+# Ignore macOS files
+.DS_Store
+
+# Ignore IDE files
+.vscode
+.idea
+
+# Ignore documentation (giữ trong host, không cần trong image)
+*.md
+!README.md

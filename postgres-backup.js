@@ -10,7 +10,7 @@ import { uploadFile } from './upload.js';
  * @param {string} outputFileName - Tên file backup (optional)
  * @returns {Promise<Object>} Kết quả backup
  */
-export async function backupPostgres(connectionString, outputFileName = null) {
+export async function backupPostgres(connectionString = process.env.DATABASE_URL, outputFileName = null) {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = outputFileName || `postgres-backup-${timestamp}.sql`;
     const backupDir = 'backups';

@@ -11,6 +11,9 @@ Dự án Node.js đơn giản để kết nối và làm việc với Cloudflare
 - ✅ Download file từ R2
 - ✅ Liệt kê file trong bucket
 - ✅ **REST API với Express** (upload/download qua Postman)
+- ✅ **PostgreSQL Backup** (tự động backup database)
+- ✅ **Cronjob tự động** (backup định kỳ)
+- ✅ **Docker support** (chạy với Docker & Docker Compose)
 - ✅ Sử dụng AWS SDK v3 (R2 tương thích S3)
 
 ## 📋 Yêu cầu
@@ -18,10 +21,14 @@ Dự án Node.js đơn giản để kết nối và làm việc với Cloudflare
 - Node.js >= 18.x
 - Tài khoản Cloudflare với R2 Storage
 - R2 API Token
+- (Optional) PostgreSQL nếu cần backup
+- (Optional) Docker & Docker Compose
 
 ## 🔧 Cài đặt
 
-### 1. Clone hoặc tải dự án về
+### Cách 1: Chạy trực tiếp với Node.js
+
+#### 1. Clone hoặc tải dự án về
 
 ```bash
 cd r2_connector
@@ -33,31 +40,91 @@ cd r2_connector
 npm install
 ```
 
-### 3. Cấu hình môi trường
+### 3. Tạo file `.env`
 
-Sao chép file `.env.example` thành `.env`:
+Copy từ `.env.example`:
 
 ```bash
 cp .env.example .env
 ```
 
-Chỉnh sửa file `.env` với thông tin R2 của bạn:
+Điền thông tin R2:
 
 ```env
-R2_ACCOUNT_ID=your_account_id_here
-R2_ACCESS_KEY_ID=your_access_key_id_here
-R2_SECRET_ACCESS_KEY=your_secret_access_key_here
-R2_BUCKET_NAME=your_bucket_name_here
+R2_ACCOUNT_ID=your_account_id
+R2_ACCESS_KEY_ID=your_access_key
+R2_SECRET_ACCESS_KEY=your_secret_key
+R2_BUCKET_NAME=your_bucket_name
+R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+PORT=3000
+
+# PostgreSQL (nếu cần backup)
+POSTGRES_CONNECTION_STRING=postgresql://user:password@localhost:5432/dbname
+BACKUP_CRON_SCHEDULE=0 2 * * *  # Backup lúc 2h sáng mỗi ngày
 ```
 
-### 4. Lấy thông tin R2 từ Cloudflare
+### 4. Chạy server
 
-1. Đăng nhập [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Vào **R2** > **Overview**
-3. Copy **Account ID**
-4. Tạo **API Token**: R2 > **Manage R2 API Tokens** > **Create API Token**
-5. Copy **Access Key ID** và **Secret Access Key**
-6. Tạo hoặc chọn **Bucket** để sử dụng
+```bash
+npm run server
+```
+
+Server sẽ chạy tại `http://localhost:3000`
+
+---
+
+### Cách 2: Chạy với Docker
+
+#### 1. Tạo file `.env` (giống Cách 1)
+
+```bash
+cp .env.example .env
+# Điền thông tin R2 và PostgreSQL
+```
+
+#### 2. Sử dụng script tự động
+
+```bash
+chmod +x docker-run.sh
+./docker-run.sh
+```
+
+Chọn option:
+- **1**: Build và chạy tất cả (API + PostgreSQL demo)
+- **2**: Chỉ chạy API (không cần PostgreSQL)
+- **3-7**: Quản lý container (stop, rebuild, logs, status, exit)
+
+#### 3. Hoặc chạy thủ công với Docker Compose
+
+```bash
+# Build và chạy tất cả services
+docker-compose up -d
+
+# Chỉ chạy API (không cần PostgreSQL)
+docker-compose up -d r2-connector
+
+# Xem logs
+docker-compose logs -f
+
+# Dừng services
+docker-compose down
+```
+
+API sẽ chạy tại `http://localhost:3000`
+
+📖 Chi tiết về Docker deployment xem [DOCKER_GUIDE.md](./DOCKER_GUIDE.md)
+
+---
+
+## 📚 Tài liệu hướng dẫn
+
+- [POSTMAN_GUIDE.md](./POSTMAN_GUIDE.md) - Hướng dẫn sử dụng API với Postman
+- [POSTGRES_BACKUP_GUIDE.md](./POSTGRES_BACKUP_GUIDE.md) - Hướng dẫn backup PostgreSQL
+- [CRONJOB_GUIDE.md](./CRONJOB_GUIDE.md) - Hướng dẫn cấu hình cronjob tự động
+- [DOCKER_GUIDE.md](./DOCKER_GUIDE.md) - Hướng dẫn deploy với Docker
+- [RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md) - Hướng dẫn deploy lên Railway
+
+---
 
 ## 📖 Sử dụng
 

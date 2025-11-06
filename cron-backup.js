@@ -60,13 +60,21 @@ async function performBackup(connectionString) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const fileName = `auto-backup-${timestamp}.sql`;
 
-        // Thử backup bằng pg_dump trước
+        // Kiểm tra có force dùng custom backup không
+        const useCustomBackup = process.env.USE_CUSTOM_BACKUP === 'true';
+
+        // Thử backup bằng pg_dump trước (nếu không force custom)
         let result;
-        try {
-            result = await backupPostgres(connectionString, fileName);
-        } catch (error) {
-            console.warn('⚠️  pg_dump failed, fallback to custom backup...');
+        if (useCustomBackup) {
+            console.log('📝 Sử dụng custom backup method (USE_CUSTOM_BACKUP=true)');
             result = await backupPostgresCustom(connectionString, fileName);
+        } else {
+            try {
+                result = await backupPostgres(connectionString, fileName);
+            } catch (error) {
+                console.warn('⚠️  pg_dump failed, fallback to custom backup...');
+                result = await backupPostgresCustom(connectionString, fileName);
+            }
         }
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
