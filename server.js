@@ -19,8 +19,41 @@ import path from 'path';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
+// Middleware - CORS configuration
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Cho phép requests không có origin (như Postman, curl)
+        if (!origin) return callback(null, true);
+
+        // Danh sách domains được phép
+        const allowedOrigins = [
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'https://file.taddesign.net', // Strapi
+            process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null,
+            process.env.CUSTOM_DOMAIN ? `https://${process.env.CUSTOM_DOMAIN}` : null,
+        ].filter(Boolean); // Loại bỏ null/undefined
+
+        // Cho phép tất cả subdomain của taddesign.net
+        if (origin.match(/https?:\/\/.*\.taddesign\.net$/)) {
+            return callback(null, true);
+        }
+
+        // Kiểm tra origin có trong whitelist không
+        if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*')) {
+            callback(null, true);
+        } else {
+            console.warn(`⚠️  CORS blocked origin: ${origin}`);
+            callback(null, true); // Tạm thời cho phép tất cả - có thể strict hơn
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders: ['Content-Disposition', 'Content-Length'],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // View engine + static assets for Dashboard UI
