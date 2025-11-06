@@ -29,13 +29,16 @@ const corsOptions = {
         const allowedOrigins = [
             'http://localhost:3000',
             'http://localhost:5173',
-            'https://file.taddesign.net', // Strapi
+            'https://file.taddesign.net',
+            'https://admin.taddesign.net',
+            'https://taddesign.net',
+            'https://www.taddesign.net',
             process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null,
             process.env.CUSTOM_DOMAIN ? `https://${process.env.CUSTOM_DOMAIN}` : null,
         ].filter(Boolean); // Loại bỏ null/undefined
 
         // Cho phép tất cả subdomain của taddesign.net
-        if (origin.match(/https?:\/\/.*\.taddesign\.net$/)) {
+        if (origin && origin.match(/https?:\/\/(.*\.)?taddesign\.net$/)) {
             return callback(null, true);
         }
 
@@ -48,12 +51,17 @@ const corsOptions = {
         }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['Content-Disposition', 'Content-Length'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Content-Disposition', 'Content-Length', 'Content-Type'],
+    maxAge: 86400, // 24 hours
 };
 
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 
 // View engine + static assets for Dashboard UI
@@ -298,13 +306,54 @@ app.get('/api/download/:key(*)', async (req, res) => {
         const result = await downloadFile(key);
 
         if (result.success) {
+            // Set CORS headers explicitly cho download
+            res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+            res.setHeader('Access-Control-Allow-Credentials', 'true');
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Type');
+            
             // Set headers để download
             res.setHeader('Content-Type', 'application/octet-stream');
             res.setHeader('Content-Disposition', `attachment; filename="${path.basename(key)}"`);
+            res.setHeader('Content-Length', result.buffer.length);
+            res.setHeader('Cache-Control', 'no-cache');
+            
             res.send(result.buffer);
         } else {
             res.status(404).json({ error: result.error });
         }
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get pre-signed download URL (alternative download method)
+app.get('/api/download-url/:key(*)', async (req, res) => {
+    try {
+        const key = req.params.key;
+        const expiresIn = parseInt(req.query.expires) || 3600; // Default 1 hour
+
+        console.log(`🔗 Generating download URL for: ${key}`);
+
+        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+        const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+        const { createR2Client, bucketName } = await import('./r2-client.js');
+
+        const r2Client = createR2Client();
+        const command = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: key,
+        });
+
+        const signedUrl = await getSignedUrl(r2Client, command, { expiresIn });
+
+        res.json({
+            success: true,
+            url: signedUrl,
+            key: key,
+            expiresIn: expiresIn,
+            message: 'Pre-signed URL generated successfully'
+        });
 
     } catch (error) {
         res.status(500).json({ error: error.message });
