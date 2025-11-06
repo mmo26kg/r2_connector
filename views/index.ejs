@@ -9,45 +9,72 @@
     </div>
 
     <div class="tab-contents">
-        <div id="upload" class="tab-content active">
-            <h2>Upload</h2>
-            <form id="uploadForm">
-                <label>File: <input type="file" name="file" required /></label>
-                <label>Key: <input type="text" name="key" value="exe/TadSetup.exe" placeholder="optional key" /></label>
-                <select name="method" id="uploadMethod">
-                    <option value="exe" selected>Upload exe (auto-clean)</option>
-                    <option value="auto">Auto</option>
-                    <option value="single">Single</option>
-                    <option value="large">Multipart</option>
-                </select>
-                <button type="submit">Upload</button>
-            </form>
-            <div id="uploadProgress" style="display:none">
-                <div class="progress-container">
-                    <div class="progress-bar" id="uploadProgressBar"></div>
-                </div>
-                <div id="uploadStatus" class="status-text"></div>
-            </div>
+    <div id="upload" class="tab-content active">
+      <h2>Upload File</h2>
+      <div class="description">
+        <p><strong>📤 Hướng dẫn Upload:</strong></p>
+        <ul>
+          <li><strong>Upload exe (auto-clean):</strong> Dành cho file .exe của TadDesign. Tự động xóa version cũ và cập nhật link download trên website.</li>
+          <li><strong>Auto:</strong> Tự động chọn phương thức upload phù hợp (single hoặc multipart) dựa trên kích thước file.</li>
+          <li><strong>Single:</strong> Cho file nhỏ dưới 100MB. Upload nhanh, phù hợp cho hình ảnh, document.</li>
+          <li><strong>Multipart:</strong> Cho file lớn trên 100MB (tối đa 5TB). Upload theo từng phần, ổn định hơn.</li>
+        </ul>
+        <p><strong>💡 Lưu ý:</strong> Key mặc định là "exe/TadSetup.exe" - có thể thay đổi tùy ý. Progress bar sẽ hiển thị % upload realtime.</p>
+      </div>
+      <form id="uploadForm">
+        <label>File: <input type="file" name="file" required /></label>
+        <label>Key (đường dẫn lưu trên cloud): <input type="text" name="key" value="exe/TadSetup.exe" placeholder="ví dụ: exe/TadSetup.exe" /></label>
+        <select name="method" id="uploadMethod">
+          <option value="exe" selected>Upload exe (auto-clean)</option>
+          <option value="auto">Auto</option>
+          <option value="single">Single</option>
+          <option value="large">Multipart</option>
+        </select>
+        <button type="submit">Upload</button>
+      </form>
+      <div id="uploadProgress" style="display:none">
+        <div class="progress-container">
+          <div class="progress-bar" id="uploadProgressBar"></div>
         </div>
-
-        <div id="download" class="tab-content">
-            <h2>Download</h2>
-            <form id="downloadForm">
-                <label>Key: <input type="text" name="key" required /></label>
-                <button type="submit">Download</button>
-            </form>
-            <div id="downloadProgress" style="display:none">
-                <div class="progress-container">
-                    <div class="progress-bar" id="downloadProgressBar"></div>
-                </div>
-                <div id="downloadStatus" class="status-text"></div>
-            </div>
+        <div id="uploadStatus" class="status-text"></div>
+      </div>
+    </div>            <div id="download" class="tab-content">
+      <h2>Download File</h2>
+      <div class="description">
+        <p><strong>📥 Hướng dẫn Download:</strong></p>
+        <ul>
+          <li>Nhập <strong>Key</strong> (đường dẫn file trên cloud). Ví dụ: <code>exe/TadSetup.exe</code></li>
+          <li>Bấm nút <strong>Download</strong> - file sẽ được tải về máy tự động.</li>
+          <li>Progress bar hiển thị % download và MB đã tải / tổng MB.</li>
+        </ul>
+        <p><strong>💡 Tip:</strong> Để biết Key của file, vào tab <strong>Files</strong> để xem danh sách tất cả file.</p>
+      </div>
+      <form id="downloadForm">
+        <label>Key (đường dẫn file): <input type="text" name="key" placeholder="ví dụ: exe/TadSetup.exe" required /></label>
+        <button type="submit">Download</button>
+      </form>
+      <div id="downloadProgress" style="display:none">
+        <div class="progress-container">
+          <div class="progress-bar" id="downloadProgressBar"></div>
         </div>
+        <div id="downloadStatus" class="status-text"></div>
+      </div>
+    </div>
 
         <div id="backup" class="tab-content">
-            <h2>Backup</h2>
+            <h2>Backup Database</h2>
+            <div class="description">
+                <p><strong>💾 Hướng dẫn Backup PostgreSQL:</strong></p>
+                <ul>
+                    <li><strong>Không check "Use custom backup":</strong> Sử dụng pg_dump (nhanh hơn, chuẩn hơn - khuyến nghị).</li>
+                    <li><strong>Check "Use custom backup":</strong> Dùng khi server không có pg_dump (ví dụ: Railway với Nixpacks).</li>
+                    <li><strong>Connection string:</strong> Để trống sẽ tự động dùng DATABASE_URL từ server config.</li>
+                    <li>Sau khi backup thành công, file .sql sẽ tự động upload lên cloud storage.</li>
+                </ul>
+                <p><strong>💡 Lưu ý:</strong> Backup được lưu vào folder <code>backups/</code> trên cloud. Xem tab <strong>Files</strong> để download về.</p>
+            </div>
             <form id="backupForm">
-                <label>Use custom backup (no pg_dump): <input type="checkbox" name="useCustom" /></label>
+                <label><input type="checkbox" name="useCustom" /> Use custom backup (no pg_dump)</label>
                 <label>Connection string (optional): <input type="text" name="connectionString"
                         placeholder="Leave blank to use DATABASE_URL from server" /></label>
                 <button type="button" id="backupBtn">Start Backup</button>
@@ -56,7 +83,24 @@
         </div>
 
         <div id="cron" class="tab-content">
-            <h2>Cron</h2>
+            <h2>Cron - Tự động Backup</h2>
+            <div class="description">
+                <p><strong>⏰ Hướng dẫn Cronjob:</strong></p>
+                <ul>
+                    <li><strong>Get Status:</strong> Xem trạng thái cronjob (đang chạy hay dừng), lịch backup, lịch sử backup gần nhất.</li>
+                    <li><strong>Start:</strong> Bật cronjob tự động backup theo lịch đã cấu hình.</li>
+                    <li><strong>Stop:</strong> Tạm dừng cronjob (backup tự động sẽ ngừng).</li>
+                    <li><strong>Trigger Now:</strong> Chạy backup ngay lập tức (không cần chờ lịch).</li>
+                    <li><strong>Update schedule:</strong> Thay đổi lịch backup. Ví dụ: <code>0 2 * * *</code> = mỗi ngày lúc 2 giờ sáng.</li>
+                </ul>
+                <p><strong>💡 Cron schedule format:</strong></p>
+                <ul>
+                    <li><code>0 2 * * *</code> - Mỗi ngày lúc 02:00 AM</li>
+                    <li><code>0 */6 * * *</code> - Mỗi 6 giờ</li>
+                    <li><code>*/30 * * * *</code> - Mỗi 30 phút</li>
+                    <li><code>0 0 * * 0</code> - Mỗi Chủ nhật lúc 00:00</li>
+                </ul>
+            </div>
             <div>
                 <button id="cronStatusBtn">Get Status</button>
                 <button id="cronStartBtn">Start</button>
@@ -71,16 +115,39 @@
         </div>
 
         <div id="files" class="tab-content">
-            <h2>Files</h2>
+            <h2>Files - Quản lý File</h2>
+            <div class="description">
+                <p><strong>📁 Hướng dẫn Quản lý File:</strong></p>
+                <ul>
+                    <li><strong>List Files:</strong> Hiển thị tất cả file trên cloud storage.</li>
+                    <li><strong>Prefix (tùy chọn):</strong> Lọc file theo folder. Ví dụ: nhập <code>exe/</code> để chỉ xem file trong folder exe.</li>
+                    <li>Mỗi file sẽ có 2 nút:
+                        <ul>
+                            <li><strong>Download:</strong> Tải file về máy</li>
+                            <li><strong>Delete:</strong> Xóa file khỏi cloud (cần xác nhận trước khi xóa)</li>
+                        </ul>
+                    </li>
+                </ul>
+                <p><strong>💡 Tip:</strong> File backup database nằm trong folder <code>backups/</code>. Nhập prefix để xem nhanh.</p>
+            </div>
             <form id="listForm">
-                <label>Prefix: <input type="text" name="prefix" placeholder="optional" /></label>
+                <label>Prefix (lọc theo folder): <input type="text" name="prefix" placeholder="optional - ví dụ: exe/ hoặc backups/" /></label>
                 <button type="submit">List Files</button>
             </form>
             <ul id="fileList"></ul>
         </div>
 
         <div id="logs" class="tab-content">
-            <h2>Logs</h2>
+            <h2>Logs - Nhật ký Hệ thống</h2>
+            <div class="description">
+                <p><strong>📊 Hướng dẫn Xem Logs:</strong></p>
+                <ul>
+                    <li><strong>Nhật ký tự động:</strong> Hệ thống ghi lại tất cả các hành động (upload, download, backup, cron...) với timestamp chính xác.</li>
+                    <li><strong>Kiểm tra lịch sử:</strong> Xem lại các action đã thực hiện, kết quả thành công/lỗi để debug hoặc audit.</li>
+                    <li><strong>Clear Logs:</strong> Xóa toàn bộ log để giữ gọn gàng (nên xem kỹ trước khi xóa nếu cần giữ lại dữ liệu).</li>
+                </ul>
+                <p><strong>💡 Tip:</strong> Logs đặc biệt hữu ích để kiểm tra xem backup tự động (cron) có chạy đúng giờ không, hoặc tìm nguyên nhân khi upload/download thất bại.</p>
+            </div>
             <div id="actionLogs"></div>
             <button id="clearLogs">Clear Logs</button>
         </div>

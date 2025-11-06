@@ -266,7 +266,7 @@ app.post('/api/upload/exe', upload.single('file'), async (req, res) => {
 
         if (result.success) {
             console.log(`✅ Upload exe thành công: ${customKey}`);
-            
+
             res.json({
                 success: true,
                 message: 'Upload exe thành công, đã xóa version cũ và cập nhật Strapi',
@@ -319,10 +319,10 @@ app.get('/api/download/:key(*)', async (req, res) => {
                 res.setHeader('Access-Control-Allow-Origin', origin);
                 res.setHeader('Access-Control-Allow-Credentials', 'true');
             }
-            
+
             // Expose headers để browser đọc được
             res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Type');
-            
+
             // Set headers để download
             res.setHeader('Content-Type', 'application/octet-stream');
             res.setHeader('Content-Disposition', `attachment; filename="${path.basename(key)}"`);
@@ -330,7 +330,7 @@ app.get('/api/download/:key(*)', async (req, res) => {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
-            
+
             console.log(`✅ Sending file: ${result.buffer.length} bytes`);
             res.send(result.buffer);
         } else {
