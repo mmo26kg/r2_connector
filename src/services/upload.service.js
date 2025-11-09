@@ -285,7 +285,7 @@ export async function uploadExeFileTad(filePath, key) {
 
         // Cập nhật endpoint Strapi
         console.log('🔄 Cập nhật Strapi...');
-        await updateEndpointStrapi(key);
+        await updateEndpointStrapi(key, 'exe');
 
         // Liệt kê các file có prefix /exe trên R2
         console.log('📋 Liệt kê file exe cũ...');
@@ -330,13 +330,72 @@ export async function uploadExeFileTad(filePath, key) {
         };
     }
 }
+export async function uploadRarFileTad(filePath, key) {
+    try {
+        // Upload file exe (tự động chọn multipart hoặc single)
+        console.log('📦 Upload file rar...');
+        const uploadResult = await uploadFileAuto(filePath, key);
+
+        if (!uploadResult.success) {
+            console.error('❌ Lỗi upload file rar:', uploadResult.error);
+            return uploadResult;
+        }
+
+        console.log('✅ Upload file rar thành công');
+        // Cập nhật endpoint Strapi
+        console.log('🔄 Cập nhật Strapi...');
+        await updateEndpointStrapi(key, 'rar');
+
+        // Liệt kê các file có prefix /rar trên R2
+        console.log('📋 Liệt kê file rar cũ...');
+        const listResult = await listFiles('rar');
+
+        if (!listResult.success) {
+            console.error('❌ Lỗi liệt kê file rar:', listResult.error);
+            return uploadResult; // Vẫn trả về kết quả upload
+        }
+
+        const files = listResult.files;
+        const r2Client = createR2Client();
+
+        // Xóa các file cũ (trừ file vừa upload và folder chứa file)
+        for (const file of files) {
+            if (file.key !== key && file.size > 0) {
+                console.log(`🗑️  Xóa file cũ: ${file.key}`);
+
+                const deleteCommand = new DeleteObjectCommand({
+                    Bucket: bucketName,
+                    Key: file.key,
+                });
+
+                await r2Client.send(deleteCommand);
+                console.log(`✅ Đã xóa: ${file.key}`);
+            }
+        }
+
+        console.log('✅ Hoàn tất upload và dọn dẹp file exe');
+
+        return {
+            ...uploadResult,
+            strapiUpdated: true,
+            oldFilesDeleted: files.filter(f => f.Key !== key).length
+        };
+
+    } catch (error) {
+        console.error('❌ Lỗi uploadExeFileTad:', error.message);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
 
 /**
  * Cập nhật endpoint download trên Strapi
  * @param {string} key - Key file trên R2
  * @returns {Promise<void>}
  */
-async function updateEndpointStrapi(key) {
+async function updateEndpointStrapi(key, type) {
     try {
         const strapiUrl = process.env.STRAPI_URL;
         const strapiToken = process.env.STRAPI_API_TOKEN;
@@ -347,6 +406,11 @@ async function updateEndpointStrapi(key) {
         }
 
         const downloadUrl = `https://storage.taddesign.net/${key}`;
+        const data = type === 'rar' ? {
+            rarDownloadLink: downloadUrl
+        } : {
+            exeDownloadLink: downloadUrl
+        };
 
         const response = await fetch(`${strapiUrl}/api/site-data`, {
             method: 'PUT',
@@ -355,9 +419,7 @@ async function updateEndpointStrapi(key) {
                 'Authorization': `Bearer ${strapiToken}`
             },
             body: JSON.stringify({
-                data: {
-                    exeDownloadLink: downloadUrl
-                }
+                data: data
             })
         });
 
