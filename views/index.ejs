@@ -16,6 +16,8 @@
                 <ul>
                     <li><strong>Upload exe (auto-clean):</strong> Dành cho file .exe của TadDesign. Tự động xóa version
                         cũ và cập nhật link download trên website.</li>
+                    <li><strong>Upload rar (auto-clean):</strong> Dành cho file .rar của TadDesign. Tự động xóa version
+                        cũ và cập nhật link download trên website.</li>
                     <li><strong>Auto:</strong> Tự động chọn phương thức upload phù hợp (single hoặc multipart) dựa trên
                         kích thước file.</li>
                     <li><strong>Single:</strong> Cho file nhỏ dưới 100MB. Upload nhanh, phù hợp cho hình ảnh, document.
@@ -23,17 +25,19 @@
                     <li><strong>Multipart:</strong> Cho file lớn trên 100MB (tối đa 5TB). Upload theo từng phần, ổn định
                         hơn.</li>
                 </ul>
-                <p><strong>💡 Lưu ý:</strong> Key mặc định là "exe/TadSetup.exe" - có thể thay đổi (bắt buộc phải bắt
-                    đầu bằng exe/). Progress bar
+                <p><strong>💡 Lưu ý:</strong> Key mặc định là "exe/TadSetup.exe" cho file exe, "rar/TadSetup.rar" cho
+                    file rar - có thể thay đổi (bắt buộc phải bắt
+                    đầu bằng exe/ hoặc rar/). Progress bar
                     sẽ hiển thị % upload realtime.</p>
                 <p> Khi thanh progress bar load xong, đợi khoảng 2 phút, link tải mới sẽ được cập nhật lên website</p>
             </div>
             <form id="uploadForm">
                 <label>File: <input type="file" name="file" required /></label>
-                <label>Key (đường dẫn lưu trên cloud): <input type="text" name="key" value="exe/TadSetup.exe"
-                        placeholder="ví dụ: exe/TadSetup.exe" /></label>
+                <label>Key (đường dẫn lưu trên cloud): <input type="text" name="key" id="uploadKey"
+                        value="exe/TadSetup.exe" placeholder="ví dụ: exe/TadSetup.exe hoặc rar/TadSetup.rar" /></label>
                 <select name="method" id="uploadMethod">
                     <option value="exe" selected>Upload exe (auto-clean)</option>
+                    <option value="rar">Upload rar (auto-clean)</option>
                     <option value="auto">Auto</option>
                     <option value="single">Single</option>
                     <option value="large">Multipart</option>

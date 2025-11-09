@@ -20,6 +20,22 @@
         });
     });
 
+    // Auto-update key based on upload method
+    const uploadMethodSelect = document.getElementById('uploadMethod');
+    const uploadKeyInput = document.getElementById('uploadKey');
+
+    if (uploadMethodSelect && uploadKeyInput) {
+        uploadMethodSelect.addEventListener('change', (e) => {
+            const method = e.target.value;
+            if (method === 'exe') {
+                uploadKeyInput.value = 'exe/TadSetup.exe';
+            } else if (method === 'rar') {
+                uploadKeyInput.value = 'rar/TadSetup.rar';
+            }
+            // Không thay đổi key cho auto, single, large
+        });
+    }
+
     // Upload form
     const uploadForm = document.getElementById('uploadForm');
     uploadForm.addEventListener('submit', async (e) => {
@@ -30,6 +46,7 @@
         if (method === 'single') url = '/api/upload';
         if (method === 'large') url = '/api/upload/large';
         if (method === 'exe') url = '/api/upload/exe';
+        if (method === 'rar') url = '/api/upload/rar';
 
         const file = formData.get('file');
         const fileSize = file.size;
@@ -273,9 +290,9 @@
                 del.style.background = 'linear-gradient(135deg, #f56565 0%, #c53030 100%)';
                 del.onclick = async (evt) => {
                     evt.preventDefault();
-                    if (!confirm('Delete ' + f.Key + '?')) return;
-                    log('Delete file', f.Key);
-                    const r = await fetch('/api/delete/' + encodeURIComponent(f.Key), { method: 'DELETE' });
+                    if (!confirm('Delete ' + f.key + '?')) return;
+                    log('Delete file', f.key);
+                    const r = await fetch('/api/delete/' + encodeURIComponent(f.key), { method: 'DELETE' });
                     const j = await r.json();
                     log('Delete result', j);
                     alert(JSON.stringify(j));
