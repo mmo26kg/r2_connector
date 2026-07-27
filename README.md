@@ -15,6 +15,7 @@ Dự án Node.js đơn giản để kết nối và làm việc với Cloudflare
 - ✅ **Cronjob tự động** (backup định kỳ)
 - ✅ **Docker support** (chạy với Docker & Docker Compose)
 - ✅ Sử dụng AWS SDK v3 (R2 tương thích S3)
+- ✅ Upload trực tiếp browser → R2 bằng presigned URL (không truyền file qua Railway)
 
 ## 📋 Yêu cầu
 
@@ -55,11 +56,12 @@ R2_ACCOUNT_ID=your_account_id
 R2_ACCESS_KEY_ID=your_access_key
 R2_SECRET_ACCESS_KEY=your_secret_key
 R2_BUCKET_NAME=your_bucket_name
-R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+R2_PUBLIC_BASE_URL=https://storage.example.com
+UPLOAD_API_KEY=replace_with_a_long_random_secret
 PORT=3000
 
 # PostgreSQL (nếu cần backup)
-POSTGRES_CONNECTION_STRING=postgresql://user:password@localhost:5432/dbname
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
 BACKUP_CRON_SCHEDULE=0 2 * * *  # Backup lúc 2h sáng mỗi ngày
 ```
 
@@ -70,6 +72,9 @@ npm run server
 ```
 
 Server sẽ chạy tại `http://localhost:3000`
+
+Direct upload cần cấu hình CORS trên bucket R2. Xem
+[R2_DIRECT_UPLOAD.md](./R2_DIRECT_UPLOAD.md) để lấy policy và mô tả API.
 
 ---
 

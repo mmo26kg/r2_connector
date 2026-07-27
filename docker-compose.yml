@@ -13,6 +13,12 @@ services:
       - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
       - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
       - R2_BUCKET_NAME=${R2_BUCKET_NAME}
+      - R2_PUBLIC_BASE_URL=${R2_PUBLIC_BASE_URL:-https://storage.taddesign.net}
+      - UPLOAD_API_KEY=${UPLOAD_API_KEY}
+      - UPLOAD_SINGLE_THRESHOLD_MB=${UPLOAD_SINGLE_THRESHOLD_MB:-100}
+      - UPLOAD_PART_SIZE_MB=${UPLOAD_PART_SIZE_MB:-100}
+      - UPLOAD_MAX_FILE_SIZE_MB=${UPLOAD_MAX_FILE_SIZE_MB:-5120}
+      - UPLOAD_URL_TTL_SECONDS=${UPLOAD_URL_TTL_SECONDS:-900}
       
       # PostgreSQL Database (optional)
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/mydb}
@@ -20,6 +26,13 @@ services:
       # Backup Cronjob (optional)
       - BACKUP_CRON_SCHEDULE=${BACKUP_CRON_SCHEDULE:-0 2 * * *}
       - BACKUP_TIMEZONE=${BACKUP_TIMEZONE:-Asia/Ho_Chi_Minh}
+      - USE_CUSTOM_BACKUP=${USE_CUSTOM_BACKUP:-false}
+
+      # Optional integrations
+      - STRAPI_URL=${STRAPI_URL:-}
+      - STRAPI_API_TOKEN=${STRAPI_API_TOKEN:-}
+      - CUSTOM_DOMAIN=${CUSTOM_DOMAIN:-}
+      - RAILWAY_PUBLIC_DOMAIN=${RAILWAY_PUBLIC_DOMAIN:-}
       
       # Server Port
       - PORT=3000

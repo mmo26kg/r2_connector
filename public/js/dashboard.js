@@ -36,23 +36,92 @@
         });
     }
 
-    // Upload form
+    function uploadApiHeaders() {
+        const uploadKey = document.getElementById('uploadApiKey').value
+            || document.getElementById('downloadApiKey').value;
+        if (!uploadKey) throw new Error('Upload API key is required');
+        sessionStorage.setItem('uploadApiKey', uploadKey);
+        return {
+            'Content-Type': 'application/json',
+            'X-Upload-Key': uploadKey
+        };
+    }
+
+    async function apiRequest(url, options = {}) {
+        const response = await fetch(url, {
+            ...options,
+            headers: { ...uploadApiHeaders(), ...(options.headers || {}) }
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || `Request failed (${response.status})`);
+        return payload;
+    }
+
+    function putToR2(url, body, contentType, onProgress) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('PUT', url);
+            xhr.setRequestHeader('Content-Type', contentType);
+            xhr.upload.addEventListener('progress', event => {
+                if (event.lengthComputable) onProgress(event.loaded, event.total);
+            });
+            xhr.addEventListener('load', () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    resolve(xhr.getResponseHeader('ETag'));
+                } else {
+                    reject(new Error(`R2 upload failed (${xhr.status})`));
+                }
+            });
+            xhr.addEventListener('error', () => reject(new Error('Network error while uploading to R2')));
+            xhr.send(body);
+        });
+    }
+
+    async function uploadMultipart(file, session, contentType, updateProgress) {
+        const uploadedBytes = new Map();
+        const completedParts = [];
+        const partNumbers = Array.from({ length: session.totalParts }, (_, index) => index + 1);
+        const concurrency = 4;
+
+        async function worker() {
+            while (partNumbers.length > 0) {
+                const partNumber = partNumbers.shift();
+                const signed = await apiRequest(`/api/uploads/${session.sessionId}/parts/sign`, {
+                    method: 'POST',
+                    body: JSON.stringify({ partNumbers: [partNumber] })
+                });
+                const start = (partNumber - 1) * session.partSize;
+                const end = Math.min(start + session.partSize, file.size);
+                const blob = file.slice(start, end);
+                const etag = await putToR2(signed.parts[0].url, blob, contentType, loaded => {
+                    uploadedBytes.set(partNumber, loaded);
+                    const totalLoaded = [...uploadedBytes.values()].reduce((sum, value) => sum + value, 0);
+                    updateProgress(totalLoaded, file.size);
+                });
+                completedParts.push({ partNumber, etag });
+            }
+        }
+
+        await Promise.all(Array.from(
+            { length: Math.min(concurrency, session.totalParts) },
+            () => worker()
+        ));
+        return completedParts.sort((left, right) => left.partNumber - right.partNumber);
+    }
+
+    // Direct-to-R2 upload form
     const uploadForm = document.getElementById('uploadForm');
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(uploadForm);
         const method = formData.get('method') || 'auto';
-        let url = '/api/upload/auto';
-        if (method === 'single') url = '/api/upload';
-        if (method === 'large') url = '/api/upload/large';
-        if (method === 'exe') url = '/api/upload/exe';
-        if (method === 'rar') url = '/api/upload/rar';
-
         const file = formData.get('file');
+        if (!(file instanceof File) || file.size === 0) return alert('Please select a non-empty file');
         const fileSize = file.size;
         const fileName = file.name;
+        const contentType = file.type || 'application/octet-stream';
+        const category = method === 'exe' || method === 'rar' ? method : 'file';
 
-        // Show progress
         const progressDiv = document.getElementById('uploadProgress');
         const progressBar = document.getElementById('uploadProgressBar');
         const statusText = document.getElementById('uploadStatus');
@@ -63,53 +132,60 @@
 
         log('Starting upload', method, fileName);
 
+        const updateProgress = (loaded, total) => {
+            const percentComplete = Math.min(100, (loaded / total) * 100);
+            progressBar.style.width = `${percentComplete}%`;
+            progressBar.textContent = `${percentComplete.toFixed(0)}%`;
+            statusText.textContent = `Uploading directly to R2: ${(loaded / 1024 / 1024).toFixed(2)} MB / ${(total / 1024 / 1024).toFixed(2)} MB`;
+        };
+
+        let session;
         try {
-            const xhr = new XMLHttpRequest();
-
-            // Progress tracking
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    progressBar.style.width = percentComplete + '%';
-                    progressBar.textContent = percentComplete.toFixed(0) + '%';
-                    statusText.textContent = `Uploading: ${(e.loaded / 1024 / 1024).toFixed(2)} MB / ${(e.total / 1024 / 1024).toFixed(2)} MB`;
-                }
+            session = await apiRequest('/api/uploads/init', {
+                method: 'POST',
+                body: JSON.stringify({ fileName, size: fileSize, contentType, category })
             });
 
-            xhr.addEventListener('load', () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    const json = JSON.parse(xhr.responseText);
-                    progressBar.style.width = '100%';
-                    progressBar.textContent = '100%';
-                    statusText.textContent = '✅ Upload complete!';
-                    log('Upload success', json);
-                    alert('Upload success: ' + (json.data?.key || 'ok'));
-                    setTimeout(() => { progressDiv.style.display = 'none'; }, 3000);
-                } else {
-                    const json = JSON.parse(xhr.responseText);
-                    statusText.textContent = '❌ Upload failed: ' + (json.error || 'Unknown error');
-                    log('Upload failed', json);
-                    alert('Upload failed: ' + (json.error || JSON.stringify(json)));
-                }
+            let parts = [];
+            if (session.mode === 'single') {
+                await putToR2(session.uploadUrl, file, contentType, updateProgress);
+            } else {
+                parts = await uploadMultipart(file, session, contentType, updateProgress);
+            }
+
+            statusText.textContent = 'Verifying and publishing upload...';
+            const result = await apiRequest(`/api/uploads/${session.sessionId}/complete`, {
+                method: 'POST',
+                body: JSON.stringify({ parts })
             });
-
-            xhr.addEventListener('error', () => {
-                statusText.textContent = '❌ Network error';
-                log('Upload error', 'Network error');
-                alert('Upload error: Network error');
-            });
-
-            xhr.open('POST', url);
-            xhr.send(formData);
-
+            progressBar.style.width = '100%';
+            progressBar.textContent = '100%';
+            statusText.textContent = '✅ Upload complete!';
+            log('Upload success', result);
+            alert(`Upload success: ${result.key}`);
+            setTimeout(() => { progressDiv.style.display = 'none'; }, 3000);
         } catch (err) {
+            if (session?.sessionId) {
+                apiRequest(`/api/uploads/${session.sessionId}`, { method: 'DELETE' }).catch(() => {});
+            }
             statusText.textContent = '❌ Error: ' + err.message;
             log('Upload error', err.message);
             alert('Upload error: ' + err.message);
         }
     });
 
-    // Download form
+    const savedUploadApiKey = sessionStorage.getItem('uploadApiKey');
+    if (savedUploadApiKey) {
+        document.getElementById('uploadApiKey').value = savedUploadApiKey;
+        document.getElementById('downloadApiKey').value = savedUploadApiKey;
+    }
+
+    async function getDirectDownloadUrl(key) {
+        const result = await apiRequest(`/api/download-url/${encodeURIComponent(key)}?expires=900`);
+        return result.url;
+    }
+
+    // Direct-from-R2 download form
     const downloadForm = document.getElementById('downloadForm');
     downloadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -121,61 +197,23 @@
         const progressBar = document.getElementById('downloadProgressBar');
         const statusText = document.getElementById('downloadStatus');
         progressDiv.style.display = 'block';
-        progressBar.style.width = '0%';
-        progressBar.textContent = '0%';
-        statusText.textContent = `Starting download: ${key}`;
+        progressBar.style.width = '100%';
+        progressBar.textContent = 'R2';
+        statusText.textContent = `Creating direct R2 download: ${key}`;
 
         log('Starting download', key);
 
         try {
-            const xhr = new XMLHttpRequest();
-            xhr.responseType = 'blob';
-
-            // Progress tracking
-            xhr.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    progressBar.style.width = percentComplete + '%';
-                    progressBar.textContent = percentComplete.toFixed(0) + '%';
-                    statusText.textContent = `Downloading: ${(e.loaded / 1024 / 1024).toFixed(2)} MB / ${(e.total / 1024 / 1024).toFixed(2)} MB`;
-                } else {
-                    statusText.textContent = `Downloading: ${(e.loaded / 1024 / 1024).toFixed(2)} MB`;
-                }
-            });
-
-            xhr.addEventListener('load', () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    const blob = xhr.response;
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = key.split('/').pop();
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    URL.revokeObjectURL(url);
-
-                    progressBar.style.width = '100%';
-                    progressBar.textContent = '100%';
-                    statusText.textContent = '✅ Download complete!';
-                    log('Download success', key);
-                    setTimeout(() => { progressDiv.style.display = 'none'; }, 3000);
-                } else {
-                    statusText.textContent = '❌ Download failed';
-                    log('Download failed', xhr.statusText);
-                    alert('Download failed: ' + xhr.statusText);
-                }
-            });
-
-            xhr.addEventListener('error', () => {
-                statusText.textContent = '❌ Network error';
-                log('Download error', 'Network error');
-                alert('Download error: Network error');
-            });
-
-            xhr.open('GET', `/api/download/${encodeURIComponent(key)}`);
-            xhr.send();
-
+            const directUrl = await getDirectDownloadUrl(key);
+            const link = document.createElement('a');
+            link.href = directUrl;
+            link.download = key.split('/').pop();
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            statusText.textContent = '✅ Download started directly from R2';
+            log('Direct R2 download started', key);
+            setTimeout(() => { progressDiv.style.display = 'none'; }, 3000);
         } catch (err) {
             statusText.textContent = '❌ Error: ' + err.message;
             log('Download error', err.message);
@@ -272,17 +310,22 @@
 
                 const dl = document.createElement('button');
                 dl.textContent = 'Download';
-                dl.onclick = (evt) => {
+                dl.onclick = async (evt) => {
                     evt.preventDefault();
-                    // Trigger download
                     const downloadKey = f.key;
                     log('Download file from list', downloadKey);
-                    const a = document.createElement('a');
-                    a.href = '/api/download/' + encodeURIComponent(downloadKey);
-                    a.download = downloadKey.split('/').pop();
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
+                    try {
+                        const directUrl = await getDirectDownloadUrl(downloadKey);
+                        const a = document.createElement('a');
+                        a.href = directUrl;
+                        a.download = downloadKey.split('/').pop();
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    } catch (error) {
+                        log('Download failed', error.message);
+                        alert(`Download failed: ${error.message}`);
+                    }
                 };
 
                 const del = document.createElement('button');

@@ -5,12 +5,14 @@ import {
     listFilesHandler,
     deleteFileHandler
 } from '../controllers/download.controller.js';
+import { requireUploadAuth } from '../middlewares/upload-auth.middleware.js';
 
 const router = Router();
 
 // Download routes
-router.get('/download/:key(*)', downloadFileHandler);
-router.get('/download-url/:key(*)', getDownloadUrl);
+// Legacy proxy download remains for compatibility but no longer stays public.
+router.get('/download/:key(*)', requireUploadAuth, downloadFileHandler);
+router.get('/download-url/:key(*)', requireUploadAuth, getDownloadUrl);
 router.get('/files', listFilesHandler);
 router.delete('/delete/:key(*)', deleteFileHandler);
 

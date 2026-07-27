@@ -7,10 +7,12 @@ import {
     uploadRarHandler,
 } from '../controllers/upload.controller.js';
 import { uploadMiddleware } from '../middlewares/upload.middleware.js';
+import { requireUploadAuth } from '../middlewares/upload-auth.middleware.js';
 
 const router = Router();
 
-// Upload routes
+// Legacy proxy upload routes. Keep for API compatibility, but require auth.
+router.use('/upload', requireUploadAuth);
 router.post('/upload', uploadMiddleware.single('file'), uploadSingleFile);
 router.post('/upload/large', uploadMiddleware.single('file'), uploadLargeFileHandler);
 router.post('/upload/auto', uploadMiddleware.single('file'), uploadAutoHandler);
