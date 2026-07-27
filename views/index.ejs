@@ -18,29 +18,20 @@
                         cũ và cập nhật link download trên website.</li>
                     <li><strong>Upload rar (auto-clean):</strong> Dành cho file .rar của TadDesign. Tự động xóa version
                         cũ và cập nhật link download trên website.</li>
-                    <li><strong>Auto:</strong> Tự động chọn phương thức upload phù hợp (single hoặc multipart) dựa trên
-                        kích thước file.</li>
-                    <li><strong>Single:</strong> Cho file nhỏ dưới 100MB. Upload nhanh, phù hợp cho hình ảnh, document.
-                    </li>
-                    <li><strong>Multipart:</strong> Cho file lớn trên 100MB (tối đa 5TB). Upload theo từng phần, ổn định
-                        hơn.</li>
+                    <li>File được upload trực tiếp từ trình duyệt lên R2, không truyền binary qua Railway.</li>
+                    <li>Hệ thống tự chọn single PUT hoặc multipart dựa trên kích thước file.</li>
                 </ul>
-                <p><strong>💡 Lưu ý:</strong> Key mặc định là "exe/TadSetup.exe" cho file exe, "rar/TadSetup.rar" cho
-                    file rar - có thể thay đổi (bắt buộc phải bắt
-                    đầu bằng exe/ hoặc rar/). Progress bar
-                    sẽ hiển thị % upload realtime.</p>
-                <p> Khi thanh progress bar load xong, đợi khoảng 2 phút, link tải mới sẽ được cập nhật lên website</p>
+                <p><strong>💡 Lưu ý:</strong> Server tự sinh key theo phiên bản để tránh ghi đè và upload đồng thời.
+                    Sau khi R2 xác nhận file, link Strapi mới được cập nhật và version cũ mới bị xóa.</p>
             </div>
             <form id="uploadForm">
+                <label>Upload API key: <input type="password" id="uploadApiKey" autocomplete="current-password"
+                        placeholder="UPLOAD_API_KEY" required /></label>
                 <label>File: <input type="file" name="file" required /></label>
-                <label>Key (đường dẫn lưu trên cloud): <input type="text" name="key" id="uploadKey"
-                        value="exe/TadSetup.exe" placeholder="ví dụ: exe/TadSetup.exe hoặc rar/TadSetup.rar" /></label>
                 <select name="method" id="uploadMethod">
                     <option value="exe" selected>Upload exe (auto-clean)</option>
                     <option value="rar">Upload rar (auto-clean)</option>
-                    <option value="auto">Auto</option>
-                    <option value="single">Single</option>
-                    <option value="large">Multipart</option>
+                    <option value="auto">File thông thường</option>
                 </select>
                 <button type="submit">Upload</button>
             </form>
@@ -57,13 +48,14 @@
                 <p><strong>📥 Hướng dẫn Download:</strong></p>
                 <ul>
                     <li>Nhập <strong>Key</strong> (đường dẫn file trên cloud). Ví dụ: <code>exe/TadSetup.exe</code></li>
-                    <li>Bấm nút <strong>Download</strong> - file sẽ được tải về máy tự động.</li>
-                    <li>Progress bar hiển thị % download và MB đã tải / tổng MB.</li>
+                    <li>Bấm nút <strong>Download</strong> - browser tải trực tiếp từ R2 bằng URL ngắn hạn.</li>
                 </ul>
                 <p><strong>💡 Tip:</strong> Để biết Key của file, vào tab <strong>Files</strong> để xem danh sách tất cả
                     file.</p>
             </div>
             <form id="downloadForm">
+                <label>API key: <input type="password" id="downloadApiKey" autocomplete="current-password"
+                        placeholder="UPLOAD_API_KEY" required /></label>
                 <label>Key (đường dẫn file): <input type="text" name="key" placeholder="ví dụ: exe/TadSetup.exe"
                         required /></label>
                 <button type="submit">Download</button>

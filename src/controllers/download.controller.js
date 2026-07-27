@@ -51,7 +51,10 @@ export async function downloadFileHandler(req, res) {
 export async function getDownloadUrl(req, res) {
     try {
         const key = req.params.key;
-        const expiresIn = parseInt(req.query.expires) || 3600;
+        const requestedExpiry = Number.parseInt(req.query.expires, 10);
+        const expiresIn = Number.isInteger(requestedExpiry)
+            ? Math.min(3600, Math.max(60, requestedExpiry))
+            : 900;
 
         console.log(`🔗 Generating download URL for: ${key}`);
 
@@ -59,6 +62,7 @@ export async function getDownloadUrl(req, res) {
         const command = new GetObjectCommand({
             Bucket: bucketName,
             Key: key,
+            ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(path.basename(key))}`,
         });
 
         const signedUrl = await getSignedUrl(r2Client, command, { expiresIn });

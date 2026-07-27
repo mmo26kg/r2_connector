@@ -4,6 +4,7 @@ import downloadRoutes from './download.routes.js';
 import backupRoutes from './backup.routes.js';
 import cronRoutes from './cron.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
+import directUploadRoutes from './direct-upload.routes.js';
 
 const router = Router();
 
@@ -12,6 +13,7 @@ router.use('/api', uploadRoutes);
 router.use('/api', downloadRoutes);
 router.use('/api', backupRoutes);
 router.use('/api', cronRoutes);
+router.use('/api', directUploadRoutes);
 router.use('/', dashboardRoutes);
 
 export default router;
