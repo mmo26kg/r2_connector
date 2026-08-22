@@ -20,19 +20,17 @@
         });
     });
 
-    // Auto-update key based on upload method
-    const uploadMethodSelect = document.getElementById('uploadMethod');
-    const uploadKeyInput = document.getElementById('uploadKey');
+    const uploadFileInput = document.getElementById('uploadFile');
+    const uploadFileNameInput = document.getElementById('uploadFileName');
+    const uploadFileNameField = document.getElementById('uploadFileNameField');
 
-    if (uploadMethodSelect && uploadKeyInput) {
-        uploadMethodSelect.addEventListener('change', (e) => {
-            const method = e.target.value;
-            if (method === 'exe') {
-                uploadKeyInput.value = 'exe/TadSetup.exe';
-            } else if (method === 'rar') {
-                uploadKeyInput.value = 'rar/TadSetup.rar';
-            }
-            // Không thay đổi key cho auto, single, large
+    if (uploadFileInput && uploadFileNameInput && uploadFileNameField) {
+        uploadFileInput.addEventListener('change', () => {
+            const file = uploadFileInput.files?.[0];
+            const hasFile = file instanceof File;
+            uploadFileNameField.hidden = !hasFile;
+            uploadFileNameInput.required = hasFile;
+            uploadFileNameInput.value = file?.name || '';
         });
     }
 
@@ -118,7 +116,8 @@
         const file = formData.get('file');
         if (!(file instanceof File) || file.size === 0) return alert('Please select a non-empty file');
         const fileSize = file.size;
-        const fileName = file.name;
+        const requestedFileName = String(formData.get('fileName') || '').trim();
+        const fileName = requestedFileName || file.name;
         const contentType = file.type || 'application/octet-stream';
         const category = method === 'exe' || method === 'rar' ? method : 'file';
 
@@ -130,7 +129,7 @@
         progressBar.textContent = '0%';
         statusText.textContent = `Starting upload: ${fileName} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`;
 
-        log('Starting upload', method, fileName);
+        log('Starting upload', method, { sourceName: file.name, fileName });
 
         const updateProgress = (loaded, total) => {
             const percentComplete = Math.min(100, (loaded / total) * 100);

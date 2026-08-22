@@ -27,7 +27,13 @@
             <form id="uploadForm">
                 <label>Upload API key: <input type="password" id="uploadApiKey" autocomplete="current-password"
                         placeholder="UPLOAD_API_KEY" required /></label>
-                <label>File: <input type="file" name="file" required /></label>
+                <label>File: <input type="file" id="uploadFile" name="file" required /></label>
+                <div id="uploadFileNameField" hidden>
+                    <label>Tên file:
+                        <input type="text" id="uploadFileName" name="fileName" maxlength="180"
+                            autocomplete="off" spellcheck="false" placeholder="Tự lấy từ tên file đã chọn" />
+                    </label>
+                </div>
                 <select name="method" id="uploadMethod">
                     <option value="exe" selected>Upload exe (auto-clean)</option>
                     <option value="rar">Upload rar (auto-clean)</option>
