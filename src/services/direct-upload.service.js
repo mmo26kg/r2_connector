@@ -141,9 +141,9 @@ export async function createUploadSession({ fileName, size, contentType, categor
     const safeName = sanitizeFileName(fileName);
     const normalizedCategory = validateCategory(category, safeName);
     const sessionId = crypto.randomUUID();
-    const key = normalizedCategory === 'file'
-        ? `uploads/${sessionId}/${safeName}`
-        : `${normalizedCategory}/${sessionId}-${safeName}`;
+    const key = normalizedCategory === 'rar'
+        ? `rar/${sessionId}-${safeName}`
+        : `${normalizedCategory === 'file' ? 'uploads' : normalizedCategory}/${sessionId}/${safeName}`;
     const normalizedContentType = contentType || 'application/octet-stream';
     const mode = normalizedSize > singleThreshold ? 'multipart' : 'single';
     const r2Client = createR2Client();
